@@ -86,6 +86,19 @@ class Runner(object):
                 fw.write('%.6f \t %.6f \n' % (precision[i], recall[i]))
         self.plot_tool.plot(precision, recall, auc)
 
+    def predict(self):
+
+        print('-------------------------------------')
+        print('start predict ...')
+
+        predict_loader = self.loader
+        print(predict_loader)
+        self.model.load_state_dict(torch.load(
+            os.path.join(config.model_dir, 'model.pkl')))
+        self.eval_tool.predict(
+            self.model, predict_loader
+        )
+
 
 if __name__ == '__main__':
     config = Config()
@@ -103,10 +116,15 @@ if __name__ == '__main__':
     if config.mode == 0:  # train mode
         train_loader = loader.get_train()
         test_loader = loader.get_test()
+        loader = [train_loader, test_loader]
     elif config.mode == 1:
         test_loader = loader.get_test()
+        loader = [train_loader, test_loader]
+    elif config.mode == 2:
+        predict_loader = loader.get_predict()
+        loader = [predict_loader]
 
-    loader = [train_loader, test_loader]
+    # loader = [train_loader, test_loader]
     print('finish!')
 
     runner = Runner(emb, class_num, loader, config)
@@ -115,5 +133,7 @@ if __name__ == '__main__':
         runner.test()
     elif config.mode == 1:
         runner.test()
+    elif config.mode == 2:
+        runner.predict()
     else:
         raise ValueError('invalid train mode!')

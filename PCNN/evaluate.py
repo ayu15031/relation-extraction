@@ -31,6 +31,8 @@ class Eval(object):
                         'flag': int(j == labels[i])
                     }
                 )
+        
+
         sorted_pred_result = sorted(
             pred_result, key=lambda x: x['prob'], reverse=True)
         precision = []
@@ -66,3 +68,22 @@ class Eval(object):
         eval_loss = total_loss / len(data_loader)
         auc, precision, recall = self.__scorer(all_probs, labels)
         return auc, eval_loss, precision, recall
+
+    def predict(self, model, data_loader):
+        output = []
+        with torch.no_grad():
+            # data_iterator = tqdm(data_loader, desc='Eval')
+            # for step, (data, entity) in enumerate(data_iterator):
+            print(data_loader)
+            for a in iter(data_loader):
+                for i in range(len(list(a))):
+                    data, entity = list(a)[i]
+                    data = data.to(self.device)
+                    _, probs = model(data)
+
+                    relid = np.argmax(probs)
+                    output.append([entity, relid])
+                    print(output)
+
+                    break
+                break

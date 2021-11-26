@@ -159,6 +159,7 @@ class NYTCorpus(object):
 
                     # in order to keep the test bag have only one label
                     k = e1 + '\t' + e2 + '\t' + str(label_idx)
+
                     if k not in data.keys():
                         data[k] = [sen_reps]
                         labels[k] = label_idx
@@ -177,6 +178,45 @@ class NYTCorpus(object):
             torch.save(data_labels, data_cache)
         return bag_data, bag_label
 
+    def __load_data_predict(self, filetype):
+
+        if os.path.exists("predict_data.pkl"):
+            bag_data, bag_entity = torch.load("predict_data.pkl")
+        else:
+            label_file = '{}.json'.format(filetype)
+            label_file_path = os.path.join(self.data_dir, label_file)
+
+            data = {}
+            labels = {}
+            with open(label_file_path, 'r', encoding='utf-8') as fr:
+                for line in fr:
+                    line = json.loads(line.strip())
+                    e1 = line['head']
+                    e2 = line['tail']
+                    sentence = line['sentence']
+                    sen_reps = self.__symbolize_sentence(e1, e2, sentence)
+
+                    # in order to keep the test bag have only one label
+                    k = e1 + '\t' + e2 + '\t'
+
+                    if k not in data.keys():
+                        data[k] = [sen_reps]
+                    else:
+                        data[k].append(sen_reps)
+
+            bag_data = []
+            bag_entity = []
+            for k in data.keys():
+                unit_data = np.asarray(data[k], dtype=np.int64)
+                unit_data = np.reshape(
+                    unit_data, newshape=(-1, 4, self.max_len))
+                bag_data.append(unit_data)
+                bag_entity.append(k)
+
+            torch.save([bag_data, bag_entity], "predict_data.pkl")
+
+        return bag_data, bag_entity
+
     def load_corpus(self, filetype):
         """
         filetype:
@@ -185,6 +225,10 @@ class NYTCorpus(object):
         """
         if filetype in ['train', 'test']:
             return self.__load_data(filetype)
+
+        if filetype in ['predict']:
+            return self.__load_data_predict('predict')
+
         else:
             raise ValueError('mode error!')
 
@@ -201,6 +245,22 @@ class NYTDataset(Dataset):
 
     def __len__(self):
         return len(self.label)
+
+
+class NYTDatasetPredict(Dataset):
+    def __init__(self, data, entities):
+        self.dataset = data
+
+        self.entities = entities
+
+    def __getitem__(self, index):
+        data = self.dataset[index]
+        # label = self.label[index]
+        entitity = self.entities[index]
+        return data, entitity
+
+    def __len__(self):
+        return len(self.entities)
 
 
 class NYTDataLoader(object):
@@ -224,6 +284,21 @@ class NYTDataLoader(object):
         label = torch.from_numpy(np.asarray(label, dtype=np.int64))
         return data, label, scope
 
+    def __collate_fn_predict(self, batch):
+        data, entity = zip(*batch)  # unzip the batch data
+        data = list(data)
+        # label = list(label)
+        entity = list(entity)
+        # scope = []
+        # total = 0
+        # for i in range(len(label)):
+        #     scope.append(total)
+        #     total += data[i].shape[0]
+        # scope.append(total)
+        data = torch.from_numpy(np.concatenate(data, axis=0))
+        # label = torch.from_numpy(np.asarray(label, dtype=np.int64))
+        return data, entity
+
     def __get_data(self, filetype, shuffle=False):
         data, labels = self.corpus.load_corpus(filetype)
         dataset = NYTDataset(data, labels)
@@ -231,6 +306,19 @@ class NYTDataLoader(object):
         loader = DataLoader(
             dataset=dataset,
             batch_size=self.config.batch_size,
+            shuffle=shuffle,
+            num_workers=0,
+            collate_fn=collate_fn
+        )
+        return loader
+
+    def __get_data_predict(self, filetype, shuffle=False):
+        data, entity = self.corpus.load_corpus(filetype)
+        dataset = NYTDatasetPredict(data, entity)
+        collate_fn = self.__collate_fn_predict
+        loader = DataLoader(
+            dataset=dataset,
+            batch_size=1,
             shuffle=shuffle,
             num_workers=0,
             collate_fn=collate_fn
@@ -247,9 +335,15 @@ class NYTDataLoader(object):
         print('finish loading test!')
         return ret
 
+    def get_predict(self):
+        ret = self.__get_data_predict(filetype='predict', shuffle=False)
+        print('finish loading predict!')
+        return ret
+
 
 if __name__ == '__main__':
     from config import Config
+
     config = Config()
     token2id, emb = EmbeddingLoader(config).load_embedding()
 
@@ -258,11 +352,14 @@ if __name__ == '__main__':
     print(rel2id)
 
     loader = NYTDataLoader(rel2id, token2id, config)
-    test_loader = loader.get_test()
+    # test_loader = loader.get_test()
 
-    for step, (data, label, scope) in enumerate(test_loader):
-        print(type(data), data.shape)
-        print(type(label), label.shape)
-        print(type(scope), len(scope))
-        break
-    train_loader = loader.get_train()
+    # for step, (data, label, scope) in enumerate(test_loader):
+    #     print(type(data), data.shape)
+    #     print(type(label), label.shape)
+    #     print(type(scope), len(scope))
+    #     break
+    # train_loader = loader.get_train()
+
+    predict_loader = loader.get_predict()
+    print(predict_loader)
