@@ -197,7 +197,7 @@ class NYTCorpus(object):
                     sen_reps = self.__symbolize_sentence(e1, e2, sentence)
 
                     # in order to keep the test bag have only one label
-                    k = e1 + '\t' + e2 + '\t'
+                    k = e1 + '\t' + e2 + '\t' + sentence
 
                     if k not in data.keys():
                         data[k] = [sen_reps]

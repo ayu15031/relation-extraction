@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 # @Version : Python 3.6
-
+import json
 import os
 import sklearn.metrics
 import torch
@@ -11,9 +11,10 @@ from tqdm import tqdm
 
 
 class Eval(object):
-    def __init__(self, class_num, config):
+    def __init__(self, class_num, config, id2rel):
         self.class_num = class_num
         self.device = config.device
+        self.id2rel = id2rel
 
     def __scorer(self, all_probs, labels):
         all_probs = np.concatenate(all_probs, axis=0).\
@@ -82,8 +83,12 @@ class Eval(object):
                     _, probs = model(data)
 
                     relid = np.argmax(probs)
-                    output.append([entity, relid])
-                    print(output)
 
-                    break
-                break
+                    output.append([entity[0].split('\t')[:3], self.id2rel[int(relid)]])
+
+            output = sorted(output, key=lambda x: x[1])
+
+            with open('predict_output.json', 'w') as outfile:
+                json.dump(output, outfile, indent=4)
+
+            print(output)

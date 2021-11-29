@@ -19,14 +19,14 @@ from plot import Canvas
 
 
 class Runner(object):
-    def __init__(self, emb, class_num, loader, config):
+    def __init__(self, emb, class_num, loader, config, id2rel):
         self.class_num = class_num
         self.loader = loader
         self.config = config
 
         self.model = DS_Model(emb, class_num, config)
         self.model = self.model.to(config.device)
-        self.eval_tool = Eval(class_num, config)
+        self.eval_tool = Eval(class_num, config, id2rel)
         self.plot_tool = Canvas(config)
 
     def train(self):
@@ -127,7 +127,7 @@ if __name__ == '__main__':
     # loader = [train_loader, test_loader]
     print('finish!')
 
-    runner = Runner(emb, class_num, loader, config)
+    runner = Runner(emb, class_num, loader, config, id2rel)
     if config.mode == 0:  # train mode
         runner.train()
         runner.test()
