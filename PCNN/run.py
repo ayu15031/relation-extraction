@@ -19,14 +19,14 @@ from plot import Canvas
 
 
 class Runner(object):
-    def __init__(self, emb, class_num, loader, config):
+    def __init__(self, emb, class_num, loader, config, id2rel):
         self.class_num = class_num
         self.loader = loader
         self.config = config
 
         self.model = DS_Model(emb, class_num, config)
         self.model = self.model.to(config.device)
-        self.eval_tool = Eval(class_num, config)
+        self.eval_tool = Eval(class_num, config, id2rel)
         self.plot_tool = Canvas(config)
 
     def train(self):
@@ -86,6 +86,19 @@ class Runner(object):
                 fw.write('%.6f \t %.6f \n' % (precision[i], recall[i]))
         self.plot_tool.plot(precision, recall, auc)
 
+    def predict(self):
+
+        print('-------------------------------------')
+        print('start predict ...')
+
+        predict_loader = self.loader
+        print(predict_loader)
+        self.model.load_state_dict(torch.load(
+            os.path.join(config.model_dir, 'model.pkl')))
+        self.eval_tool.predict(
+            self.model, predict_loader
+        )
+
 
 if __name__ == '__main__':
     config = Config()
@@ -103,17 +116,24 @@ if __name__ == '__main__':
     if config.mode == 0:  # train mode
         train_loader = loader.get_train()
         test_loader = loader.get_test()
+        loader = [train_loader, test_loader]
     elif config.mode == 1:
         test_loader = loader.get_test()
+        loader = [train_loader, test_loader]
+    elif config.mode == 2:
+        predict_loader = loader.get_predict()
+        loader = [predict_loader]
 
-    loader = [train_loader, test_loader]
+    # loader = [train_loader, test_loader]
     print('finish!')
 
-    runner = Runner(emb, class_num, loader, config)
+    runner = Runner(emb, class_num, loader, config, id2rel)
     if config.mode == 0:  # train mode
         runner.train()
         runner.test()
     elif config.mode == 1:
         runner.test()
+    elif config.mode == 2:
+        runner.predict()
     else:
         raise ValueError('invalid train mode!')

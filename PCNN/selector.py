@@ -24,7 +24,7 @@ class ONE(nn.Module):
         # net structures and operations
         self.dropout = nn.Dropout(self.dropout_value)
         self.dense = nn.Linear(
-            in_features=self.filter_num*self.piece,
+            in_features=self.filter_num * self.piece,
             out_features=self.class_num,
             bias=True
         )
@@ -35,8 +35,8 @@ class ONE(nn.Module):
         probs = []
         label = label.cpu().detach().tolist()
         for i in range(batch_size):
-            sen_reps = reps[scope[i]:scope[i+1], :].\
-                view(-1, self.filter_num*self.piece)  # n*C
+            sen_reps = reps[scope[i]:scope[i + 1], :]. \
+                view(-1, self.filter_num * self.piece)  # n*C
             logits = self.dense(sen_reps)  # n*N
             prob = F.softmax(logits, dim=-1)  # n*N
             # prob = torch.clamp(prob, min=1.0e-10, max=1.0)
@@ -79,7 +79,7 @@ class AVG(nn.Module):
         # net structures and operations
         self.dropout = nn.Dropout(self.dropout_value)
         self.dense = nn.Linear(
-            in_features=self.filter_num*self.piece,
+            in_features=self.filter_num * self.piece,
             out_features=self.class_num,
             bias=True
         )
@@ -89,8 +89,8 @@ class AVG(nn.Module):
         batch_size = len(scope) - 1
         bag_reps = []
         for i in range(batch_size):
-            sen_reps = reps[scope[i]:scope[i+1], :].\
-                view(-1, self.filter_num*self.piece)  # n*C
+            sen_reps = reps[scope[i]:scope[i + 1], :]. \
+                view(-1, self.filter_num * self.piece)  # n*C
             bag_rep = sen_reps.mean(dim=0).view(1, -1)
             bag_reps.append(bag_rep)
 
@@ -118,22 +118,40 @@ class ATT(nn.Module):
         # net structures and operations
         self.dropout = nn.Dropout(self.dropout_value)
         self.dense = nn.Linear(
-            in_features=self.filter_num*self.piece,
+            in_features=self.filter_num * self.piece,
             out_features=self.class_num,
             bias=True
         )
         self.attention = nn.Parameter(
-            torch.rand(size=(1, self.filter_num*self.piece)).view(-1)
+            torch.rand(size=(1, self.filter_num * self.piece)).view(-1)
         )
 
-    def forward(self, reps, scope, label):
+    def forward(self, reps, scope=None, label=None):
         reps = self.dropout(reps)
+
+        if scope is None and label is None:
+            sen_reps = reps. \
+                view(-1, self.filter_num * self.piece)  #
+            att_sen_reps = torch.mul(sen_reps, self.attention)  # n*C
+            rel_embedding = self.dense.weight.t()  # C*N
+            att_score = torch.mm(att_sen_reps, rel_embedding)  # n*N
+            att_weight = F.softmax(att_score, dim=0).t()  # N*n
+
+            bag_reps = torch.mm(att_weight, sen_reps)  # N*C
+            logits = self.dense(bag_reps)  # N*N (premise*predicted)
+            prob = F.softmax(logits, dim=-1)  # N*N
+            predcited_prob = prob.diag().view(-1, self.class_num)
+
+            return predcited_prob
+
         batch_size = len(scope) - 1
         probs = []
+
         label = label.cpu().detach().tolist()
+
         for i in range(batch_size):
-            sen_reps = reps[scope[i]:scope[i+1], :].\
-                view(-1, self.filter_num*self.piece)  # n*C
+            sen_reps = reps[scope[i]:scope[i + 1], :]. \
+                view(-1, self.filter_num * self.piece)  # n*C
             att_sen_reps = torch.mul(sen_reps, self.attention)  # n*C
             rel_embedding = self.dense.weight.t()  # C*N
             att_score = torch.mm(att_sen_reps, rel_embedding)  # n*N

@@ -56,7 +56,7 @@ class DS_Model(nn.Module):
             tensors=[word_embedding, pos1_embedding, pos2_embedding], dim=-1)
         return emb
 
-    def forward(self, data, scope, label):
+    def forward(self, data, scope=None, label=None):
         tokens = data[:, 0, :].view(-1, self.max_len)
         pos1 = data[:, 1, :].view(-1, self.max_len)
         pos2 = data[:, 2, :].view(-1, self.max_len)
@@ -64,5 +64,7 @@ class DS_Model(nn.Module):
         emb = self.input(tokens, pos1, pos2)
         reps = self.encoder(emb, mask)
         probs = self.selector(reps, scope, label)
-        loss = self.criterion(torch.log(probs), label)
+        loss = None
+        if label:
+            loss = self.criterion(torch.log(probs), label)
         return loss, probs

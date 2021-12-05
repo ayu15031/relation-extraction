@@ -87,17 +87,17 @@ class Config(object):
 
         # train settings
         parser.add_argument('--encoder', type=str,
-                            default='cnn', choices=['cnn', 'pcnn'],
+                            default='pcnn', choices=['cnn', 'pcnn'],
                             help='encoder for sentence')
         parser.add_argument('--selector', type=str,
-                            default='one', choices=['one', 'att', 'avg'],
+                            default='att', choices=['one', 'att', 'avg'],
                             help='selector for model')
         parser.add_argument('--model_name', type=str,
                             default=None,
                             help='model name')
         parser.add_argument('--mode', type=int,
-                            default=1,
-                            choices=[0, 1],
+                            default=0,
+                            choices=[0, 1, 2],
                             help='running mode: 0: train; 1: test')
         parser.add_argument('--seed', type=int,
                             default=2020,

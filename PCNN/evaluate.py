@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 # @Version : Python 3.6
-
+import json
 import os
 import sklearn.metrics
 import torch
@@ -11,9 +11,10 @@ from tqdm import tqdm
 
 
 class Eval(object):
-    def __init__(self, class_num, config):
+    def __init__(self, class_num, config, id2rel):
         self.class_num = class_num
         self.device = config.device
+        self.id2rel = id2rel
 
     def __scorer(self, all_probs, labels):
         all_probs = np.concatenate(all_probs, axis=0).\
@@ -31,6 +32,8 @@ class Eval(object):
                         'flag': int(j == labels[i])
                     }
                 )
+        
+
         sorted_pred_result = sorted(
             pred_result, key=lambda x: x['prob'], reverse=True)
         precision = []
@@ -66,3 +69,26 @@ class Eval(object):
         eval_loss = total_loss / len(data_loader)
         auc, precision, recall = self.__scorer(all_probs, labels)
         return auc, eval_loss, precision, recall
+
+    def predict(self, model, data_loader):
+        output = []
+        with torch.no_grad():
+            # data_iterator = tqdm(data_loader, desc='Eval')
+            # for step, (data, entity) in enumerate(data_iterator):
+            print(data_loader)
+            for a in iter(data_loader):
+                for i in range(len(list(a))):
+                    data, entity = list(a)[i]
+                    data = data.to(self.device)
+                    _, probs = model(data)
+
+                    relid = np.argmax(probs)
+                    print([entity[0].split('\t')[:3], self.id2rel[int(relid)]])
+                    output.append([entity[0].split('\t')[:3], self.id2rel[int(relid)]])
+
+            output = sorted(output, key=lambda x: x[1])
+
+            with open('predict_output.json', 'w') as outfile:
+                json.dump(output, outfile, indent=4)
+
+            # print(output)
