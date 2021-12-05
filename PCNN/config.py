@@ -96,7 +96,7 @@ class Config(object):
                             default=None,
                             help='model name')
         parser.add_argument('--mode', type=int,
-                            default=2,
+                            default=0,
                             choices=[0, 1, 2],
                             help='running mode: 0: train; 1: test')
         parser.add_argument('--seed', type=int,

@@ -83,7 +83,7 @@ class Eval(object):
                     _, probs = model(data)
 
                     relid = np.argmax(probs)
-
+                    print([entity[0].split('\t')[:3], self.id2rel[int(relid)]])
                     output.append([entity[0].split('\t')[:3], self.id2rel[int(relid)]])
 
             output = sorted(output, key=lambda x: x[1])
@@ -91,4 +91,4 @@ class Eval(object):
             with open('predict_output.json', 'w') as outfile:
                 json.dump(output, outfile, indent=4)
 
-            print(output)
+            # print(output)
